@@ -1,0 +1,63 @@
+@model XKANBAN.DTOs.Users.RegisterViewModel
+@{
+    ViewData["Title"] = "Добавление пользователя";
+}
+
+<div class="login-box">
+  <h2>Добавление пользователя</h2>
+  <form asp-controller="User" asp-action="Register" method="POST">
+    <div class="user-box">
+       <input asp-for="FullName" type="text">
+       <label>ФИО</label>
+       <span asp-validation-for="FullName"></span>
+    </div>
+    <div class="user-box">
+      <input asp-for="Username" type="text">
+      <label>Логин</label>
+      <span asp-validation-for="Username"></span>
+    </div>
+    <div class="user-box">
+      <input asp-for="Email" type="text">
+      <label>Email</label>
+      <span asp-validation-for="Email"></span>
+    </div>
+    <div class="user-box">
+      <input asp-for="Password" type="password">
+      <label>Пароль</label>
+      <span asp-validation-for="Password"></span>
+    </div>
+    <div class="user-box">
+      <input asp-for="RePassword" type="password">
+      <label>Пароль x2</label>
+      <span asp-validation-for="RePassword"></span>
+    </div>
+    <div class="user-box">
+            <select asp-for="Role" class="form-control" id="Role" onchange="showGroupField()">
+                <option value="" selected>Выберите роль</option>
+                <option value="Student">Студент</option>
+                <option value="Supervisor">Супервайзер</option>
+                <option value="Teacher">Науч.рук</option>
+                <option value="Consultant">Консультант</option>
+            </select>
+      <span asp-validation-for="Role"></span>
+    </div>
+    <div class="user-box" id="GroupField" style="display: none;">
+      <input asp-for="Group" type="text">
+      <label>Группа</label>
+      <span asp-validation-for="Group"></span>
+    </div>
+    <button type="submit">Вперед</button>
+  </form>
+</div>
+
+<script>
+function showGroupField() {
+  var roleSelect = document.getElementById('Role');
+  var groupField = document.getElementById('GroupField');
+  if (roleSelect.value === 'Student') {
+    groupField.style.display = 'block';
+  } else {
+    groupField.style.display = 'none';
+  }
+}
+</script>

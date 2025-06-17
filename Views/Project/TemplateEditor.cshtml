@@ -1,0 +1,190 @@
+﻿@model IEnumerable<XKANBAN.DTOs.Projects.TemplateViewModel>
+@{
+    ViewData["Title"] = "Редактор шаблонов";
+}
+
+<h2>Редактор шаблонов</h2>
+
+<button class="btn btn-primary" onclick="showTemplateForm()">Создать новый шаблон</button>
+
+<table class="table">
+    <thead>
+        <tr>
+            <th>Название</th>
+            <th>Описание</th>
+            <th>Действия</th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var template in Model)
+        {
+            <tr>
+                <td>@template.Title</td>
+                <td>@template.Description</td>
+                <td>
+                    <button class="btn btn-warning" onclick="editTemplate(@template.Id)">Редактировать</button>
+                    <form asp-action="DeleteTemplate" asp-route-id="@template.Id" method="post" style="display:inline;">
+                        <button type="submit" class="btn btn-danger">Удалить</button>
+                    </form>
+                </td>
+            </tr>
+        }
+    </tbody>
+</table>
+
+<div id="templateFormContainer" style="display:none;">
+    <form id="templateForm" asp-action="SaveTemplate" method="post">
+        <input type="hidden" id="templateId" name="Id" />
+        <ul class="nav nav-tabs">
+            <li class="nav-item">
+                <a class="nav-link active" id="general-tab" data-toggle="tab" href="#general">Общая информация</a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" id="columns-tab" data-toggle="tab" href="#columns">Колонки</a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" id="cards-tab" data-toggle="tab" href="#cards">Карточки</a>
+            </li>
+        </ul>
+        <div class="tab-content">
+            <div class="tab-pane fade show active" id="general">
+                <div class="form-group">
+                    <label for="templateTitle">Название</label>
+                    <input type="text" class="form-control" id="templateTitle" name="Title" required />
+                </div>
+                <div class="form-group">
+                    <label for="templateDescription">Описание</label>
+                    <textarea class="form-control" id="templateDescription" name="Description" required></textarea>
+                </div>
+                <div class="form-group">
+                    <label for="templateEndDate">Дата окончания</label>
+                    <input type="date" class="form-control" id="templateEndDate" name="EndDate" required />
+                </div>
+            </div>
+            <div class="tab-pane fade" id="columns">
+                <div id="columnTemplatesContainer">
+                </div>
+                <button type="button" class="btn btn-success btn-sm" onclick="addColumnTemplate()">+</button>
+            </div>
+            <div class="tab-pane fade" id="cards">
+                <div id="cartTemplatesContainer">
+                </div>
+                <button type="button" class="btn btn-success btn-sm" onclick="addCartTemplate()">+</button>
+                <button type="submit" class="btn btn-success">Сохранить</button>
+            </div>
+        </div>
+    </form>
+</div>
+
+<script>
+    const maxColumns = 5;
+
+    function showTemplateForm() {
+        document.getElementById('templateId').value = 0;
+        document.getElementById('templateTitle').value = '';
+        document.getElementById('templateDescription').value = '';
+        document.getElementById('templateEndDate').value = '';
+        document.getElementById('cartTemplatesContainer').innerHTML = '';
+        document.getElementById('columnTemplatesContainer').innerHTML = '';
+        for (let i = 0; i < 3; i++) addColumnTemplate();
+        document.getElementById('templateFormContainer').style.display = 'block';
+        $('#general-tab').tab('show'); // Показать первую вкладку
+    }
+
+    function editTemplate(id) {
+        fetch(`/Project/GetTemplateById?id=${id}`)
+            .then(response => response.json())
+            .then(data => {
+                document.getElementById('templateId').value = data.id;
+                document.getElementById('templateTitle').value = data.title;
+                document.getElementById('templateDescription').value = data.description;
+                document.getElementById('templateEndDate').value = data.endDate.split('T')[0];
+
+                const cartContainer = document.getElementById('cartTemplatesContainer');
+                cartContainer.innerHTML = '';
+                data.cartTemplates.forEach((cart, index) => {
+                    addCartTemplate(cart, index);
+                });
+
+                const columnContainer = document.getElementById('columnTemplatesContainer');
+                columnContainer.innerHTML = '';
+                data.columnTemplates.forEach((column, index) => {
+                    if (index < 3 || column.isActive) {
+                        addColumnTemplate(column, index);
+                    }
+                });
+
+                document.getElementById('templateFormContainer').style.display = 'block';
+                $('#general-tab').tab('show'); // Показать первую вкладку
+            });
+    }
+
+    function addCartTemplate(cart = {}, index = null) {
+        const container = document.getElementById('cartTemplatesContainer');
+        const cartIndex = index !== null ? index : container.children.length;
+        const cartTemplate = `
+                    <div class="cart-template">
+                        <div class="form-group">
+                            <label>Карточка ${cartIndex + 1} <span class="text-danger" style="cursor: pointer;" onclick="removeCartTemplate(this)">&times;</span></label>
+                            <input type="hidden" name="CartTemplates[${cartIndex}].Id" value="${cart.id || ''}" />
+                            <input type="text" class="form-control" name="CartTemplates[${cartIndex}].Name" value="${cart.name || ''}" required />
+                            <input type="hidden" name="CartTemplates[${cartIndex}].Color" value="${cart.color || '#f9f9f9'}" />
+                            <input type="hidden" name="CartTemplates[${cartIndex}].DeadLineDate" value="${cart.deadLineDate || new Date().toISOString().split('T')[0]}" />
+                        </div>
+                    </div>
+                `;
+        container.insertAdjacentHTML('beforeend', cartTemplate);
+    }
+
+    function removeCartTemplate(button) {
+        button.closest('.cart-template').remove();
+        updateCartLabels();
+    }
+
+    function updateCartLabels() {
+        const cartTemplates = document.querySelectorAll('.cart-template');
+        cartTemplates.forEach((cartTemplate, index) => {
+            cartTemplate.querySelector('label').innerText = `Карточка ${index + 1} `;
+            cartTemplate.querySelector('span').innerText = '×';
+        });
+    }
+
+    function addColumnTemplate(column = {}, index = null) {
+        const container = document.getElementById('columnTemplatesContainer');
+        const columnIndex = index !== null ? index : container.children.length;
+        if (columnIndex >= maxColumns) return;
+
+        const isActive = column.isActive !== undefined ? column.isActive : (columnIndex < 5);
+
+        if (!isActive && columnIndex >= 5) {
+            return;
+        }
+
+        const columnTemplate = `
+                    <div class="column-template">
+                        <div class="form-group">
+                            <label>Колонка ${columnIndex + 1} <span class="text-danger" style="cursor: pointer;" onclick="removeColumnTemplate(this)">&times;</span></label>
+                            <input type="hidden" name="ColumnTemplates[${columnIndex}].Id" value="${column.id || ''}" />
+                            <input type="text" class="form-control" name="ColumnTemplates[${columnIndex}].Name" value="${column.name || ''}" required />
+                        </div>
+                        <input type="hidden" name="ColumnTemplates[${columnIndex}].SlotNumber" value="${column.slotNumber || columnIndex + 1}" />
+                        <input type="hidden" name="ColumnTemplates[${columnIndex}].IsActive" value="true" />
+                    </div>
+                `;
+        container.insertAdjacentHTML('beforeend', columnTemplate);
+    }
+
+    function removeColumnTemplate(button) {
+        button.closest('.column-template').remove();
+        updateColumnLabels();
+    }
+
+    function updateColumnLabels() {
+        const columnTemplates = document.querySelectorAll('.column-template');
+        columnTemplates.forEach((columnTemplate, index) => {
+            columnTemplate.querySelector('label').innerText = `Колонка ${index + 1} `;
+            columnTemplate.querySelector('span').innerText = '×';
+            columnTemplate.querySelector('input[name*="SlotNumber"]').value = index + 1;
+        });
+    }
+</script>

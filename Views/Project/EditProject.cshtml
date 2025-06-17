@@ -1,0 +1,74 @@
+@model XKANBAN.Models.Project.Project
+@{
+    ViewData["Title"] = $"Редактирование '{Model.Title}'";
+}
+
+<div class="container">
+    <h2>@ViewData["Title"]</h2>
+    <form asp-controller="Project" asp-action="EditProject" method="post">
+        <input type="hidden" asp-for="ProjectId">
+        <input type="hidden" asp-for="UserId">
+        <div class="form-group">
+            <label for="titleInput">Название</label>
+            <input type="text" class="form-control" id="titleInput" asp-for="Title">
+            <span asp-validation-for="Title" class="text-danger"></span>
+        </div>
+
+        <div class="form-group">
+            <label for="descriptionTextarea">Описание</label>
+            <textarea class="form-control" id="descriptionTextarea" rows="4" asp-for="Description"></textarea>
+            <span asp-validation-for="Description" class="text-danger"></span>
+        </div>
+
+        <div class="form-group">
+            <label for="endDateInput">Дата завершения</label>
+            <input type="date" class="form-control" id="endDateInput" name="EndDate" asp-for="EndDate">
+            <span asp-validation-for="EndDate" class="text-danger"></span>
+        </div>
+
+        <div id="assigned-users">
+            <h4>Пользователи с доступом:</h4>
+            <ul id="assigned-users-list"></ul>
+        </div>
+
+        <button type="submit" class="btn btn-success">Сохранить</button>
+    </form>
+</div>
+@section Scripts {
+    <script>
+        $(document).ready(function () {
+            var assignIds = "@Model.AssingIds";
+            loadAssignedUsersForDeletion(assignIds);
+        });
+        // Функция для загрузки логинов пользователей и добавления их в список для удаления
+        function loadAssignedUsersForDeletion(assignIds) {
+            $.get(`/Project/GetAssignedUsers?assignIds=${assignIds}`, function (data) {
+                // Очищаем список перед добавлением новых пользователей
+                $('#assigned-users-list').empty();
+                // Добавляем логины пользователей в список для удаления
+                data.forEach(function (login) {
+                    $('#assigned-users-list').append(`<li>${login} <span style="color: black; cursor: pointer;" onclick="removeUser('${login}')">&#10006;</span></li>`);
+                    console.log(login);
+                });
+            });
+        }
+
+        // Функция для удаления пользователя из списка
+        function removeUser(login) {
+            // Получаем projectId из URL
+            const projectId = window.location.pathname.split('/').pop();
+            console.log(login);
+            // Ваш код для удаления пользователя
+            $.post(`/Project/RemoveAssignedUser?projectId=${projectId}&login=${login}`, function (data) {
+                // Проверяем успешность удаления
+                if (data.success) {
+                    // Успешно удалён, удаляем пользователя из списка
+                    $(`#assigned-users-list li:contains('${login}')`).remove();
+                } else {
+                    // Ошибка удаления, выводим сообщение об ошибке
+                    alert('Ошибка при удалении пользователя.');
+                }
+            });
+        }
+    </script>
+}

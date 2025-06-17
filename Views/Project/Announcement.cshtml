@@ -1,0 +1,179 @@
+﻿@model IEnumerable<XKANBAN.DTOs.Projects.AddAnnouncementViewModel>
+@{
+    ViewData["Title"] = "Доска объявлений";
+}
+
+<h2>Доска объявлений</h2>
+
+<!-- Блок для кнопки супервайзоров, скрытый по умолчанию -->
+<div id="supervisorActions" style="display: none;">
+    <a class="btn btn-success text-white" data-toggle="modal" data-target="#createAnnouncementModal">Новое объявление</a>
+</div>
+
+<hr />
+
+<!-- Блок для объявлений -->
+<div id="announcements" class="announcement-board">
+    @if (Model == null || !Model.Any())
+    {
+        <p>Пока нет объявлений</p>
+    }
+    else
+    {
+        @foreach (var announcement in Model.OrderByDescending(a => a.CreatedAt))
+        {
+            <div class="card mb-3">
+                <div class="card-body">
+                    <h5 class="card-title">
+                        @announcement.Title
+                        <button type="button" class="close delete-announcement" aria-label="Close" style="display: none;" data-id="@announcement.AnnouncementId">
+                            <span aria-hidden="true">&times;</span>
+                        </button>
+                    </h5>
+                    <h6 class="card-subtitle mb-2 text-muted">@announcement.Author</h6>
+                    <p class="card-text">@announcement.Content</p>
+                    <p class="card-text"><small class="text-muted">Опубликовано: @announcement.CreatedAt.ToString("g")</small></p>
+                </div>
+            </div>
+        }
+    }
+</div>
+
+<!-- Модальное окно для создания объявления -->
+<div class="modal fade" id="createAnnouncementModal" tabindex="-1" role="dialog" aria-labelledby="createAnnouncementModalLabel" aria-hidden="true">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="createAnnouncementModalLabel">Новое объявление</h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                <form id="announcementForm">
+                    <div class="form-group">
+                        <label for="Title">Название</label>
+                        <input type="text" class="form-control" id="Title" name="Title" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="Content">Текст</label>
+                        <textarea class="form-control" id="Content" name="Content" rows="3" required></textarea>
+                    </div>
+                    <button type="submit" class="btn btn-primary">Опубликовать</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            loadAnnouncements();
+        });
+
+        document.getElementById("announcementForm").addEventListener("submit", function (event) {
+            event.preventDefault();
+
+            var formData = new FormData(this);
+
+            fetch('@Url.Action("CreateAnnouncement", "Project")', {
+                method: 'POST',
+                body: formData
+            })
+                .then(response => response.json())
+                .then(data => {
+                    $('#createAnnouncementModal').modal('hide');
+                    if (document.querySelector('.modal-backdrop')) {
+                        document.querySelector('.modal-backdrop').remove();
+                    }
+                    updateAnnouncements(data);
+                })
+                .catch(error => console.error('Ошибка при создании объявления:', error));
+        });
+
+        function loadAnnouncements() {
+            fetch('@Url.Action("GetAnnouncements", "Project")')
+                .then(response => response.json())
+                .then(data => {
+                    updateAnnouncements(data);
+                })
+                .catch(error => console.error('Ошибка при загрузке объявлений:', error));
+        }
+
+        function updateAnnouncements(data) {
+            var announcementsDiv = document.getElementById('announcements');
+            announcementsDiv.innerHTML = '';
+
+            if (!data || data.length === 0) {
+                announcementsDiv.innerHTML = '<p>Пока нет объявлений</p>';
+                return;
+            }
+
+            data.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+
+            data.forEach(function (announcement) {
+                var tile = document.createElement('div');
+                tile.className = 'card mb-3';
+
+                var cardBody = document.createElement('div');
+                cardBody.className = 'card-body';
+                tile.appendChild(cardBody);
+
+                var title = document.createElement('h5');
+                title.className = 'card-title';
+                title.textContent = announcement.title;
+
+                var deleteButton = document.createElement('button');
+                deleteButton.className = 'close delete-announcement';
+                deleteButton.setAttribute('aria-label', 'Close');
+                deleteButton.setAttribute('data-id', announcement.id);
+                deleteButton.style.display = 'none';
+                deleteButton.innerHTML = '<span aria-hidden="true">&times;</span>';
+                title.appendChild(deleteButton);
+
+                cardBody.appendChild(title);
+
+                var subtitle = document.createElement('h6');
+                subtitle.className = 'card-subtitle mb-2 text-muted';
+                subtitle.textContent = announcement.author;
+                cardBody.appendChild(subtitle);
+
+                var content = document.createElement('p');
+                content.className = 'card-text';
+                content.textContent = announcement.content;
+                cardBody.appendChild(content);
+
+                var createdAt = document.createElement('p');
+                createdAt.className = 'card-text';
+                createdAt.innerHTML = '<small class="text-muted">Создано: ' + new Date(announcement.createdAt).toLocaleString() + '</small>';
+                cardBody.appendChild(createdAt);
+
+                announcementsDiv.appendChild(tile);
+            });
+
+            // Привязываем обработчики событий для удаления объявлений
+            document.querySelectorAll('.delete-announcement').forEach(button => {
+                button.addEventListener('click', function () {
+                    var announcementId = this.getAttribute('data-id');
+                    if (confirm('Вы действительно хотите удалить это объявление?')) {
+                        deleteAnnouncement(announcementId);
+                    }
+                });
+            });
+
+            checkSupervisorRole(); // Ensure the delete buttons are shown correctly after updating announcements
+        }
+
+        function deleteAnnouncement(announcementId) {
+            fetch('@Url.Action("DeleteAnnouncement", "Project")/' + announcementId, {
+                method: 'DELETE'
+            })
+                .then(response => response.json())
+                .then(data => {
+                    updateAnnouncements(data);
+                })
+                .catch(error => console.error('Ошибка при удалении объявления:', error));
+        }
+    </script>
+}

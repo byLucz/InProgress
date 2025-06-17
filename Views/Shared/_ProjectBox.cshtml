@@ -1,0 +1,45 @@
+<style>
+    .project-container {
+        border: 1px solid #e1e1e1; 
+        padding: 15px; 
+        margin-bottom: 20px; 
+        background-color: #f9f9f9;
+    }
+
+    .project-title {
+        font-size: 2.5em; 
+    }
+
+    .project-basic-text {
+        margin-top: 10px; 
+    }
+
+    .project-links a {
+        color: darkblue;
+        text-decoration: none; 
+        margin-right: 10px; 
+    }
+
+    .project-links a:hover {
+            text-decoration: underline; 
+    }
+</style>
+
+<div class="project-container">
+    <h2 class="project-title">@Model.Title</h2>
+    <p class="project-basic-text">Описание: @Model.Descrioption</p>
+    <p class="project-basic-text">Автор:  @Model.Creator</p>
+    <p class="project-basic-text">Создано: @Model.CreateDate</p>
+    <p class="project-basic-text">Выполнить до: @Model.EndDate</p>
+    @if (!string.IsNullOrWhiteSpace(Model.AssingsIds))
+    {
+        <p class="project-basic-text">Предоставлен доступ: @Model.AssingsIds</p>
+    }
+    <div class="project-links">
+        <a href="/Project/Kanban/@Model.ProjectId">Открыть</a>
+        <div id="teacherProjActions" style="display: none;">
+            <a href="/Project/EditProject/@Model.ProjectId">Редактировать</a>
+            <a href="/Project/DeleteProject/@Model.ProjectId">Удалить</a>
+        </div>
+    </div>
+</div>

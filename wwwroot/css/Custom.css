@@ -1,0 +1,395 @@
+
+
+.login-box {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 300px;
+    padding: 20px;
+    background: #fff;
+    box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+    border-radius: 5px;
+    text-align: center;
+}
+
+    .login-box h2 {
+        margin: 0 0 20px;
+        padding: 0;
+        color: #333;
+    }
+
+    .login-box .user-box {
+        position: relative;
+        margin-bottom: 20px;
+    }
+
+        .login-box .user-box input {
+            width: 100%;
+            padding: 10px;
+            font-size: 16px;
+            color: #555;
+            border: 1px solid #ccc;
+            border-radius: 3px;
+            outline: none;
+            background: transparent;
+        }
+
+        .login-box .user-box label {
+            position: absolute;
+            top: 10px; 
+            left: 10px;
+            color: #555; 
+            pointer-events: none;
+            transition: 0.5s;
+            transform: translateY(0%);
+        }
+
+        .login-box .user-box input:focus ~ label,
+        .login-box .user-box input:valid ~ label {
+            top: -10px;
+            left: 10px;
+            color: #555; 
+            font-size: 12px;
+            transform: translateY(-50%);
+        }
+
+    .login-box form button {
+        width: 100%;
+        padding: 10px;
+        background-color: #4169e1;
+        color: #fff;
+        border: none;
+        border-radius: 3px;
+        cursor: pointer;
+        transition: background-color 0.3s;
+    }
+
+        .login-box form button:hover {
+            background-color: #4169e1;
+        }
+
+@keyframes btn-anim1 {
+    0% {
+        left: -100%;
+    }
+
+    50%,100% {
+        left: 100%;
+    }
+}
+
+@keyframes btn-anim2 {
+    0% {
+        top: -100%;
+    }
+
+    50%,100% {
+        top: 100%;
+    }
+}
+
+@keyframes btn-anim3 {
+    0% {
+        right: -100%;
+    }
+
+    50%,100% {
+        right: 100%;
+    }
+}
+
+@keyframes btn-anim4 {
+    0% {
+        bottom: -100%;
+    }
+
+    50%,100% {
+        bottom: 100%;
+    }
+}
+
+
+  .kanban {
+    display: flex;
+    flex: 1 1 auto;
+    overflow: auto;
+  }
+  
+  .kanban-container {
+    display: flex;
+    flex-direction: row;
+    padding: 10px 0 10px 10px;
+  }
+  
+  .kanban-column {
+    display: flex;
+    flex-direction: column;
+    margin-right: 10px;
+    min-width: 300px;
+    max-width: 300px;
+    border: 1px solid #e5e5e5;
+    border-radius: 4px;
+    background-color: #eee;
+  }
+  
+  .kanban-column-header {
+    padding: 10px;
+    font-weight: bold;
+    font-size: 0.875rem;
+  }
+  
+  .kanban-column-list {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    overflow-y: auto;
+    margin: 0;
+    padding: 10px 10px 0;
+    list-style: none;
+  }
+  
+  .kanban-column-footer {
+    padding: 10px;
+    font-size: 0.875rem;
+    border-top: 1px solid #e5e5e5;
+    background-color: #f5f5f5;
+  }
+
+.unread-indicator {
+    display: none;
+    width: 25px;
+    height: 25px;
+    background-color: #4169e1;
+    border-radius: 50%;
+    color: white;
+    text-align: center;
+    position: absolute;
+    right: 5px;
+    top: 5px;
+}
+
+  .modal {
+    position: fixed;
+    background-color: white;
+    padding: 20px;
+    border: 1px solid #ccc;
+    border-radius: 5px;
+    display: none; 
+}
+
+#editModal {
+    
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: auto; 
+    max-width: 400px; 
+    padding: 20px;
+    z-index: 1050;
+}
+
+.modal-content {
+    padding-left: 15px; 
+    padding-right: 15px; 
+    padding-top: 20px; 
+    padding-bottom: 20px; 
+    border-radius: 5px; 
+    background-color: #fff; 
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1); 
+}
+
+    .modal-content label,
+    .modal-content input,
+    .modal-content select,
+    .modal-content textarea,
+    .modal-content p {
+        display: block; 
+        width: 100%; 
+        margin-bottom: 10px; 
+        box-sizing: border-box; 
+    }
+
+.modal-task-name-input {
+    padding: 10px; 
+    margin-top: 5px; 
+}
+
+.close-button {
+    float: right; 
+    font-size: 28px; 
+    cursor: pointer; 
+    color: #aaa; 
+}
+
+    .close-button:hover {
+        color: #000; 
+    }
+
+    #chatModal {
+        
+        position: fixed;
+        top: 50%; 
+        transform: translateY(-50%); 
+        width: 350px; 
+        max-height: 70%; 
+        z-index: 1050; 
+        background: #FFF; 
+        border: 1px solid #ccc; 
+        border-radius: 5px; 
+        display: flex;
+        flex-direction: column;
+        overflow-y: auto;
+    }
+
+    #modalChat {
+        width: 100%; 
+        max-height: calc(100% - 60px);
+        overflow-y: auto; 
+        flex-grow: 1; 
+    }
+
+    #modalMessageForm {
+        border-top: 1px solid #ccc; 
+        padding: 10px; 
+        display: flex; 
+        flex-direction: column; 
+    }
+
+    #modalMessageForm input[type="text"], #modalMessageForm input[type="file"] {
+        width: 100%; 
+        margin-bottom: 8px; 
+    }
+
+    #modalMessageForm button {
+        width: 100%; 
+        padding: 10px; 
+        background-color: #4169e1; 
+        color: #fff; 
+        border: none; 
+        border-radius: 3px; 
+        cursor: pointer; 
+        transition: background-color 0.3s; 
+    }
+
+        #modalMessageForm button:hover {
+            background-color: #0056b3; 
+        }
+
+  .modal-header {
+    font-size: 16px;
+    font-weight: bold;
+    margin-bottom: 10px; 
+}
+
+  .modal-section {
+    margin-bottom: 10px; 
+}
+
+.input-field {
+    width: 100%; 
+    box-sizing: border-box; 
+    padding: 8px 10px; 
+}
+
+.button-submit {
+    color: #fff;
+    background-color: #4169e1;
+    width: auto; 
+    padding: 8px 16px; 
+}
+
+
+  .card {
+    background-color: #f9f9f9; 
+    border: 2px solid #ddd; 
+    border-radius: 3px;
+    margin-bottom: 10px; 
+    padding: 10px; 
+    cursor: pointer;
+    box-shadow: 0 2px 4px 0 rgba(0,0,0,0.2); 
+}
+
+
+.move-approval {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    display: flex;
+    flex-direction: column;
+}
+
+    .move-approval a {
+        margin-bottom: 5px;
+        font-size: 12px;
+        padding: 5px;
+        text-align: center;
+    }
+
+  .app {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    overflow: hidden;
+  }
+
+.btn-small {
+    padding: 5px 10px; 
+    font-size: 12px; 
+    margin: 0 5px;
+    line-height: 1; 
+    vertical-align: middle; 
+}
+
+.btn-container {
+    display: flex; 
+    justify-content: center; 
+    align-items: center; 
+    margin-bottom: 20px; 
+}
+
+.btn {
+    padding: 10px 15px;
+    font-size: 16px;
+    color: #fff;
+    background-color: #4169e1;
+    border: none;
+    border-radius: 5px;
+    text-align: center;
+    text-decoration: none;
+    display: inline-block;
+    cursor: pointer;
+    transition: background-color 0.3s;
+}
+
+.btn:hover {
+    background-color: #0056b3;
+}
+
+.btn-primary {
+    background-color: #28a745; 
+}
+
+.btn-secondary {
+    background-color: #17a2b8; 
+}
+
+.btn-primary:hover {
+    background-color: #218838;
+}
+
+.btn-secondary:hover {
+    background-color: #138496;
+}
+
+.btn-outline-dark {
+    color: #343a40; 
+    border-color: #343a40; 
+    background-color: transparent; 
+}
+
+    .btn-outline-dark:hover {
+        color: #fff; 
+        background-color: #343a40; 
+        border-color: #343a40; 
+    }

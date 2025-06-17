@@ -1,0 +1,302 @@
+﻿@{
+    ViewData["Title"] = "Инфографика";
+}
+
+<div class="container mt-4">
+    <h2>@ViewData["Title"]</h2>
+    <div class="mt-3">
+        <h3>Выберите проект для отображения данных:</h3>
+        <div class="input-group mb-3">
+            <select class="form-control" id="projectSelect">
+                <option value="">Выберите проект</option>
+            </select>
+            <div class="input-group-append">
+                <button class="btn btn-outline-secondary" onclick="loadGraph('LoadProjectActivityGraph')">Диаграмма сгорания</button>
+                <button class="btn btn-outline-secondary" onclick="loadGraph('LoadTasksByColumns')">Карта цветов задач</button>
+                <button class="btn btn-outline-secondary" onclick="loadGraph('LoadCompletedTasksOverTime')">Линейный график задач</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="graphContainer" class="mt-4">
+    </div>
+</div>
+
+@section Scripts {
+        <script src="https://d3js.org/d3.v7.min.js"></script>
+        <script>
+            document.addEventListener('DOMContentLoaded', function () {
+                showProjectModal(); 
+            });
+
+        function loadGraph(action) {
+            var projectId = document.getElementById('projectSelect').value;
+            if (!projectId) {
+                alert('Пожалуйста, выберите проект.');
+                return;
+            }
+            fetch('/Project/' + action + '?projectId=' + projectId)
+                .then(response => response.json())
+                .then(data => {
+                    if (action === 'LoadTasksByColumns') {
+                        drawPieChart(data);
+                    } else if (action === 'LoadProjectActivityGraph') {
+                        drawBurndownChart(data.tasks, data.deadlineDate, data.total, data.createDate);
+                    } else if (action === 'LoadCompletedTasksOverTime') {
+                        drawLineChart(data.tasks, data.deadlineDate, data.total, data.createDate);
+                    }
+                })
+                .catch(error => console.error('Ошибка при загрузке графика:', error));
+        }
+
+        function drawPieChart(data) {
+            d3.select("#graphContainer").selectAll("*").remove();
+
+            const colorPalette = ["#004581", "#015366", "#63898C", "#A7D1D2", "#E0F4F5"];
+            const color = d3.scaleOrdinal().range(colorPalette);
+
+            var taskCounts = {};
+            data.forEach(function (d) {
+                if (taskCounts[d.columnName]) {
+                    taskCounts[d.columnName] += d.count;
+                } else {
+                    taskCounts[d.columnName] = d.count;
+                }
+            });
+
+            var taskCountsArray = Object.entries(taskCounts).filter(([columnName, count]) => count > 0);
+
+            var svg = d3.select("#graphContainer")
+                .append("svg")
+                .attr("width", 400)
+                .attr("height", 400)
+                .append("g")
+                .attr("transform", "translate(200, 200)");
+
+            var arc = d3.arc().innerRadius(0).outerRadius(200);
+            var pie = d3.pie().value(function (d) { return d[1]; });
+
+            var g = svg.selectAll(".arc")
+                .data(pie(taskCountsArray))
+                .enter().append("g")
+                .attr("class", "arc");
+
+            g.append("path")
+                .attr("d", arc)
+                .style("fill", function (d, i) { return color(i); });
+
+            g.append("text")
+                .attr("transform", function (d) { return "translate(" + arc.centroid(d) + ")"; })
+                .attr("dy", "0.35em")
+                .style("text-anchor", "middle")
+                .style("fill", "black") 
+                .text(function (d) {
+                    var percent = ((d.endAngle - d.startAngle) / (2 * Math.PI)) * 100;
+                    return d.data[0] + ": " + Math.round(percent) + "% (" + d.data[1] + ")";
+                });
+        }
+
+        function drawBurndownChart(data, deadlineDate, total, createdate) {
+            d3.select("#graphContainer").selectAll("*").remove();
+
+            var parseDate = d3.timeParse("%Y-%m-%d");
+            var startDate = parseDate(createdate);
+            var endDate = parseDate(deadlineDate);
+
+            data.forEach(function (d) {
+                d.date = parseDate(d.date);
+                d.remaining = +d.remaining;
+            });
+
+            data.unshift({ date: startDate, remaining: total });
+            data.push({ date: endDate, remaining: 0 });
+
+            var margin = { top: 20, right: 20, bottom: 30, left: 40 },
+                width = 960 - margin.left - margin.right,
+                height = 500 - margin.top - margin.bottom;
+
+            var x = d3.scaleTime()
+                .range([0, width])
+                .domain([d3.timeDay.offset(startDate, -1), d3.timeDay.offset(endDate, 1)]);
+
+            var y = d3.scaleLinear()
+                .range([height, 0])
+                .domain([0, total]);
+
+            var svg = d3.select("#graphContainer").append("svg")
+                .attr("width", width + margin.left + margin.right)
+                .attr("height", height + margin.top + margin.bottom)
+                .append("g")
+                .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
+
+            function drawLine(svg, xScale, yScale, data, strokeColor, dashArray = "0", fill = "none") {
+                var line = d3.line()
+                    .x(d => xScale(d.date))
+                    .y(d => yScale(d.remaining))
+                    .curve(d3.curveMonotoneX);
+
+                svg.append("path")
+                    .datum(data)
+                    .attr("class", "line")
+                    .attr("d", line)
+                    .attr("stroke", strokeColor)
+                    .attr("stroke-width", 2)
+                    .attr("stroke-dasharray", dashArray)
+                    .attr("fill", fill);
+            }
+
+            var idealData = [
+                { date: startDate, remaining: total },
+                { date: endDate, remaining: 0 }
+            ];
+            var realData = data.map(d => ({ date: d.date, remaining: d.remaining }));
+
+            drawLine(svg, x, y, idealData, "green", "5,5");
+            drawLine(svg, x, y, realData, "red"); 
+
+            svg.selectAll(".dot-real")
+                .data(data)
+                .enter().append("circle")
+                .attr("class", "dot-real")
+                .attr("cx", d => x(d.date))
+                .attr("cy", d => y(d.remaining))
+                .attr("r", 5)
+                .attr("fill", "red");
+
+            svg.append("g")
+                .attr("transform", "translate(0," + height + ")")
+                .call(d3.axisBottom(x).tickFormat(d3.timeFormat("%m-%d")));
+
+            svg.append("g")
+                .call(d3.axisLeft(y));
+
+            var tooltip = d3.select("body").append("div")
+                .attr("class", "tooltip")
+                .style("position", "absolute")
+                .style("text-align", "center")
+                .style("width", "120px")
+                .style("height", "48px")
+                .style("padding", "2px")
+                .style("font", "12px sans-serif")
+                .style("background", "lightsteelblue")
+                .style("border", "0px")
+                .style("border-radius", "8px")
+                .style("pointer-events", "none")
+                .style("opacity", 0);
+
+            svg.selectAll(".dot-real")
+                .on('mouseover', function (event, d) {
+                    tooltip.transition()
+                        .duration(200)
+                        .style("opacity", .9);
+                    tooltip.html("Дата: " + d3.timeFormat("%Y-%m-%d")(d.date) + "<br/>" + "Оставшиеся задачи: " + d.remaining)
+                        .style("left", (event.pageX) + "px")
+                        .style("top", (event.pageY - 28) + "px");
+                })
+                .on('mouseout', function (event) {
+                    tooltip.transition()
+                        .duration(500)
+                        .style("opacity", 0);
+                });
+        }
+
+
+        function drawLineChart(tasks, deadlineDate, total, createDate) {
+            d3.select("#graphContainer").selectAll("*").remove();
+
+            if (!Array.isArray(tasks)) {
+                console.error('Tasks is not an array:', tasks);
+                return;
+            }
+
+            var parseDate = d3.timeParse("%Y-%m-%d");
+            tasks.forEach(function (d) {
+                d.date = parseDate(d.date);
+                d.count = +d.count;
+            });
+
+            var margin = { top: 20, right: 20, bottom: 30, left: 40 },
+                width = 960 - margin.left - margin.right,
+                height = 500 - margin.top - margin.bottom;
+
+            var x = d3.scaleTime().range([0, width]).domain(d3.extent(tasks, function (d) { return d.date; }));
+            var y = d3.scaleLinear().range([height, 0]).domain([0, d3.max(tasks, function (d) { return d.count; })]);
+
+            var svg = d3.select("#graphContainer").append("svg")
+                .attr("width", width + margin.left + margin.right)
+                .attr("height", height + margin.top + margin.bottom)
+                .append("g")
+                .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
+
+            var line = d3.line()
+                .x(function (d) { return x(d.date); })
+                .y(function (d) { return y(d.count); });
+
+            svg.append("path")
+                .datum(tasks)
+                .attr("class", "line")
+                .attr("d", line)
+                .attr("fill", "none")
+                .attr("stroke", "steelblue")
+                .attr("stroke-width", 2);
+
+            svg.append("g")
+                .attr("transform", "translate(0," + height + ")")
+                .call(d3.axisBottom(x));
+
+            svg.append("g")
+                .call(d3.axisLeft(y));
+
+            var tooltip = d3.select("body").append("div")
+                .attr("class", "tooltip")
+                .style("position", "absolute")
+                .style("text-align", "center")
+                .style("width", "120px")
+                .style("height", "48px")
+                .style("padding", "2px")
+                .style("font", "12px sans-serif")
+                .style("background", "lightsteelblue")
+                .style("border", "0px")
+                .style("border-radius", "8px")
+                .style("pointer-events", "none")
+                .style("opacity", 0);
+
+            svg.selectAll(".dot")
+                .data(tasks)
+                .enter().append("circle")
+                .attr("class", "dot")
+                .attr("cx", function (d) { return x(d.date); })
+                .attr("cy", function (d) { return y(d.count); })
+                .attr("r", 5)
+                .on("mouseover", function (event, d) {
+                    tooltip.transition().duration(200).style("opacity", .9);
+                    tooltip.html("Дата: " + d3.timeFormat("%Y-%m-%d")(d.date) + "<br/>Закончено задач: " + d.count)
+                        .style("left", (event.pageX) + "px")
+                        .style("top", (event.pageY - 28) + "px");
+                })
+                .on("mouseout", function (d) {
+                    tooltip.transition().duration(500).style("opacity", 0);
+                });
+        }
+
+            function showProjectModal() {
+                fetch(`/Project/GetUserProjects`)
+                    .then(response => response.json())
+                    .then(data => {
+                        var projectSelect = document.getElementById('projectSelect');
+                        projectSelect.innerHTML = ''; 
+                        var defaultOption = document.createElement('option');
+                        defaultOption.value = '';
+                        defaultOption.textContent = 'Выберите проект';
+                        projectSelect.appendChild(defaultOption);
+                        data.forEach(project => {
+                            var optionElement = document.createElement('option');
+                            optionElement.textContent = project.title;
+                            optionElement.value = project.projectId;
+                            projectSelect.appendChild(optionElement);
+                        });
+                    })
+                    .catch(error => console.error('Ошибка при загрузке проектов:', error));
+            }
+        </script>
+    }

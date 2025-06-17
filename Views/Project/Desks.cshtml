@@ -1,0 +1,113 @@
+﻿@model IEnumerable<XKANBAN.DTOs.Projects.ShowProjectsViewModel>
+@{
+    ViewData["Title"] = "Доски";
+}
+
+<h2>Проекты пользователя</h2>
+
+<div id="searchPanel" class="row mb-3" style="display: none;">
+    <div class="col-md-6">
+        <form class="form-inline" method="get" action="@Url.Action("Search", "Project")">
+            <input type="text" class="form-control mr-sm-2" name="query" placeholder="Поиск проекта" aria-label="Search">
+            <button type="submit" class="btn btn-outline-success my-2 my-sm-0">Поиск</button>
+        </form>
+    </div>
+</div>
+
+<div id="teacherKBpanel" style="display: none;">
+    <a class="btn btn-success" asp-controller="Project" asp-action="Create">Создать новый проект</a>
+    <a class="btn btn-danger" href="javascript:void(0);" onclick="openModal()">Выбрать шаблон</a>
+</div>
+
+<hr />
+
+@if (Model.Any())
+{
+    foreach (var item in Model)
+    {
+        <partial name="_ProjectBox" model="item" />
+    }
+}
+else
+{
+    <p>У пользователя пока нет проектов.</p>
+}
+
+<!-- Simple Modal -->
+<div id="templateModal" style="display:none; position: fixed; left: 50%; top: 50%; transform: translate(-50%, -50%); background-color: white; border: 1px solid #ccc; padding: 20px; z-index: 1000;">
+    <h4>Выберите шаблон</h4>
+    <select class="form-control" id="templateSelect">
+        <option value="template1">Подготовка и написание ВКР</option>
+        <option value="template2">Тестовый шаблон</option>
+    </select>
+    <div style="margin-top: 10px;"></div>
+    <button class="btn btn-small" onclick="createDefaultProject()">Выбрать</button>
+    <button class="btn btn-small" onclick="closeModal()">Отмена</button>
+</div>
+
+<!-- Overlay for Modal Background -->
+<div id="modalOverlay" style="display:none; position: fixed; left: 0; top: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.5); z-index: 999;"></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
+
+<script>
+    function openModal() {
+        fetchTemplates();
+        document.getElementById('templateModal').style.display = 'block';
+        document.getElementById('modalOverlay').style.display = 'block';
+    }
+
+    function closeModal() {
+        document.getElementById('templateModal').style.display = 'none';
+        document.getElementById('modalOverlay').style.display = 'none';
+    }
+
+    function fetchTemplates() {
+        $.ajax({
+            type: "GET",
+            url: '@Url.Action("GetTemplates", "Project")',
+            success: function (data) {
+                var templateSelect = document.getElementById('templateSelect');
+                templateSelect.innerHTML = `
+                        <option value="template1">Подготовка и написание ВКР</option>
+                        <option value="template2">Тестовый шаблон</option>
+                    `;
+                data.forEach(template => {
+                    var option = document.createElement('option');
+                    option.value = template.id;
+                    option.textContent = template.title;
+                    templateSelect.appendChild(option);
+                });
+            },
+            error: function (xhr, status, error) {
+                console.error("Ошибка при загрузке шаблонов: ", error);
+            }
+        });
+    }
+
+    function createDefaultProject() {
+        var selectedTemplate = document.getElementById('templateSelect').value;
+        var actionUrl;
+
+        if (selectedTemplate === 'template1') {
+            actionUrl = '@Url.Action("CreateDiplomeProject", "Project")';
+        } else if (selectedTemplate === 'template2') {
+            actionUrl = '@Url.Action("CreateDefaultProject", "Project")';
+        } else {
+            actionUrl = `/Project/CreateProjectFromTemplate?templateId=${selectedTemplate}`;
+        }
+
+        $.ajax({
+            type: "POST",
+            url: actionUrl,
+            data: { template: selectedTemplate },
+            success: function (response) {
+                closeModal();
+                window.location.href = "/Project/Desks";
+            },
+            error: function (xhr, status, error) {
+                console.error("Ошибка при создании проекта: ", error);
+            }
+        });
+    }
+</script>

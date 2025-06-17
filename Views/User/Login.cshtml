@@ -1,0 +1,25 @@
+@model XKANBAN.DTOs.Users.LoginViewModel
+@{
+    ViewData["Title"] = "Login";
+}
+
+<div class="login-box">
+    <h2>Вход</h2>
+    <form asp-controller="User" asp-action="Login" method="POST">
+        <div class="user-box">
+            <input asp-for="Login" type="text" required>
+            <label asp-for="Login">Логин</label>
+            <span asp-validation-for="Login" class="validation-message"></span>
+        </div>
+        <div class="user-box">
+            <input asp-for="Password" type="password" required>
+            <label asp-for="Password">Пароль</label>
+            <span asp-validation-for="Password" class="validation-message"></span>
+        </div>
+        <div class="checkbox-box">
+            <input asp-for="RememberMe" type="checkbox" id="rememberMe">
+            <label for="rememberMe">Не выходить</label>
+        </div>
+        <button type="submit" class="submit-button">Войти</button>
+    </form>
+</div>

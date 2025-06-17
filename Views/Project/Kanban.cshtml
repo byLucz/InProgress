@@ -1,0 +1,531 @@
+﻿@model XKANBAN.Models.Project.Project
+@{
+    ViewData["Title"] = @Model.Title;
+}
+
+<div class="app">
+    <h2>@ViewData["Title"]</h2>
+    <div class="btn-container">
+        <div id="teacherActions" style="display: none;">
+            <a href="/Project/AddCart/@Model.ProjectId" class="btn btn-small">Добавить задачу</a>
+            <button id="addColumnButton" class="btn btn-small">Добавить колонку</button>
+            <button id="disColumnButton" class="btn btn-small">Удалить колонку</button>
+        </div>
+    </div>
+    <div class="kanban">
+        <div class="kanban-container">
+            @for (int i = 1; i <= Model.Columns.Count; i++)
+            {
+                var columnName = $"Column{i}";
+                var slotName = $"Slot{i}";
+                var columns = ViewData[columnName] as List<XKANBAN.Models.Project.Column>;
+                var slots = ViewData[slotName] as IEnumerable<XKANBAN.Models.Project.Cart>;
+
+                <div class="kanban-column">
+                    <div class="kanban-column-header">
+                        @if (Model.Columns != null && Model.Columns.Any())
+                        {
+                            foreach (var column in columns)
+                            {
+                                <div class="kanban-column-header-main" data-column-id="@column.ColumnId">
+                                    @column.Name
+                                </div>
+                            }
+                        }
+                    </div>
+                    <ul class="kanban-column-list">
+                        @foreach (var slot in slots)
+                        {
+                            <li class="card" onclick="toggleFields(event, '@slot.CartId')" id="card_@slot.CartId"
+                                style="@(slot.RequestedColumnId.HasValue ? "border: 2px solid red;" : "")">
+                                <div>@slot.Name</div>
+                                <!-- Чат (изначально скрыт) -->
+                                <div class="unread-indicator" id="unreadIndicator_@slot.CartId" style="display: none;">●</div>
+                                <div id="chat_@slot.CartId" style="display: none;">
+                                    <div id="chatMessages_@slot.CartId" style="height: 150px; overflow-y: scroll;"></div>
+                                </div>
+                                <div>
+                                    <div id="teacherKBpanel" style="display: none;">
+                                        <a href="/Project/GoToPreviousLevel/@slot.CartId" class="btn-outline-dark" onclick="event.stopPropagation();">←</a>
+                                        <a href="/Project/GoToNextLevel/@slot.CartId" class="btn-outline-dark" onclick="event.stopPropagation();">→</a>
+                                        <a href="/Project/DeleteCart/@slot.CartId" class="btn-outline-dark" onclick="event.stopPropagation();">×</a>
+                                        @if (@slot.RequestedColumnId.HasValue)
+                                        {
+                                            <div class="move-approval">
+                                                <a href="#" class="btn-outline-dark" onclick="approveMove(@slot.CartId); event.stopPropagation();">✅</a>
+                                                <a href="#" class="btn-outline-dark" onclick="rejectMove(@slot.CartId); event.stopPropagation();">❌</a>
+                                            </div>
+                                        }
+                                    </div>
+
+                                    <div id="studentKBpanel" style="display: none;">
+                                        <a href="#" class="btn-outline-dark" onclick="requestMoveCard(@slot.CartId, '@Model.ProjectId', @slot.StatusNumber + 1); event.stopPropagation();">⇒</a>
+                                    </div>
+                                </div>
+                            </li>
+                        }
+                    </ul>
+                </div>
+            }
+        </div>
+    </div>
+</div>
+
+<div id="editModal" class="modal" style="display: none;">
+    <div class="modal-content">
+        <span class="close-button" onclick="closeModals()">&times;</span>
+        <div class="modal-header">Редактирование</div>
+        <label for="modalTaskNameInput">Название:</label>
+        <input type="text" id="modalTaskNameInput" placeholder="Название задачи" class="modal-task-name-input" />
+        <label for="modalDescriptionInput">Описание:</label>
+        <textarea id="modalDescriptionInput" placeholder="Описание задачи" class="modal-task-name-input"></textarea> <!-- Поле для описания -->
+        <label for="colorSelector">Цвет:</label>
+        <select id="colorSelector" class="modal-task-name-input">
+            <option value="#f9f9f9">Стандартный</option>
+            <option value="#e1dc6b">🟡 Желтый</option>
+            <option value="#BADBAD">🟢 Зеленый</option>
+            <option value="#FE8535">🟠 Оранжевый</option>
+            <option value="#a1dffb">🔵 Голубой</option>
+        </select>
+        <label for="deadlineDateInput">До:</label>
+        <input type="date" id="deadlineDateInput" name="deadline" class="modal-task-name-input" />
+        <p id="timeLeftDisplay">Оставшееся время: <span id="timeLeftValue"></span></p>
+        <button id="saveModalButton" class="button-submit" type="submit" onclick="saveModalTaskDetails()">Сохранить</button>
+    </div>
+</div>
+
+<div id="chatModal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">Чат</div>
+        <div id="modalChat">
+            <!-- Сюда помещаются сообщения чата -->
+        </div>
+        <form id="modalMessageForm" onsubmit="sendModalMessage(event)" enctype="multipart/form-data">
+            <textarea id="modalChatInput" placeholder="Введите сообщение" rows="2"></textarea>
+            <input type="file" id="modalFileInput" />
+            <button type="submit">Отправить</button>
+        </form>
+    </div>
+</div>
+
+<script>
+    let currentCartId = null;
+
+    function toggleFields(event, cartId) {
+        currentCartId = cartId;
+        event.stopPropagation();
+
+        fetch(`/Project/GetCartDetails?cartId=${cartId}`)
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    document.getElementById('modalTaskNameInput').value = data.name;
+                    document.getElementById('modalDescriptionInput').value = data.description;
+                    document.getElementById('colorSelector').value = data.color;
+                    const deadlineInput = document.getElementById('deadlineDateInput');
+                    const deadline = data.deadline.split('T')[0]; // Форматируем дату, удаляя время
+                    deadlineInput.value = deadline;
+                    const unreadIndicator = document.getElementById('unreadIndicator_' + cartId);
+                    if (unreadIndicator) {
+                        unreadIndicator.style.display = 'none';
+                    }
+
+                    let timeLeft = "";
+                    if (deadline === getCurrentDate()) {
+                        timeLeft = "Дата не задана";
+                    } else {
+                        const now = new Date();
+                        const deadlineDate = new Date(deadline);
+                        timeLeft = calculateTimeLeft(now, deadlineDate);
+                    }
+                    document.getElementById('timeLeftValue').textContent = timeLeft;
+
+                    document.getElementById('modalChat').innerHTML = document.getElementById('chatMessages_' + cartId).innerHTML;
+                    loadMessages(cartId);
+
+                    // Открываем модальные окна
+                    document.getElementById('editModal').style.display = 'block';
+                    document.getElementById('chatModal').style.display = 'block';
+
+                    document.getElementById('modalMessageForm').onsubmit = function (e) {
+                        sendMessageWithFile(e, cartId);
+                    };
+                } else {
+                    console.error('Ошибка загрузки данных карточки: ' + data.message);
+                }
+            })
+            .catch(error => {
+                console.error('Ошибка при запросе данных карточки:', error);
+            });
+    }
+
+    function getCurrentDate() {
+        var today = new Date();
+        var year = today.getFullYear();
+        var month = (today.getMonth() + 1).toString().padStart(2, '0');
+        var day = today.getDate().toString().padStart(2, '0');
+        return `${year}-${month}-${day}`;
+    }
+
+    function calculateTimeLeft(now, deadlineDate) {
+        const diff = deadlineDate - now;
+        if (diff > 0) {
+            const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+            const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+            return `${days} дней ${hours} часов`;
+        } else {
+            return "Срок выполнения истек!";
+        }
+    }
+
+    function disableEditFields() {
+        document.getElementById('modalTaskNameInput').disabled = true;
+        document.getElementById('modalDescriptionInput').disabled = true;
+        document.getElementById('colorSelector').disabled = true;
+        document.getElementById('deadlineDateInput').disabled = true;
+        document.getElementById('saveModalButton').style.display = 'none';
+    }
+
+    function saveModalTaskDetails() {
+        var taskName = document.getElementById('modalTaskNameInput').value;
+        var color = document.getElementById('colorSelector').value;
+        var description = document.getElementById('modalDescriptionInput').value; // Получаем значение описания
+        var deadline = document.getElementById('deadlineDateInput').value;
+
+        fetch('/Project/UpdateCartDetails', { // URL обновлен для соответствия вашему бэкенду
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                cartId: currentCartId,
+                newName: taskName,
+                newColor: color, // Отправляем цвет
+                description: description,
+                deadline: deadline // Отправляем описание
+            }),
+        })
+            .then(response => {
+                if (!response.ok) throw new Error('Ошибка.');
+                return response.json();
+            })
+            .then(data => {
+                if (data.success) {
+                    var cardElement = document.querySelector('.kanban-column-list li[onclick*="' + currentCartId + '"]');
+                    if (cardElement) {
+                        cardElement.style.backgroundColor = color;
+                        cardElement.textContent = taskName;
+                    } else {
+                        console.error('Ошибка:', currentCartId);
+                    }
+                    closeModals();
+                    location.reload();
+                    
+                } else {
+                    console.error('Ошибка обновления данных карточки: ' + data.message);
+                }
+            })
+            .catch(error => {
+                console.error('Ошибка при обновлении данных карточки:', error);
+            });
+    }
+
+    function closeModals() {
+        document.getElementById('editModal').style.display = 'none';
+        document.getElementById('chatModal').style.display = 'none';
+    }
+
+    function sendMessageWithFile(event, cartId) {
+        event.preventDefault();
+        var formData = new FormData();
+        var messageInput = document.getElementById('modalChatInput');
+        var message = messageInput.value;
+        var fileInput = document.getElementById('modalFileInput');
+        var file = fileInput.files[0];
+
+        if (message.trim() !== '') {
+            formData.append('message', message);
+        }
+        if (file) {
+            formData.append('file', file);
+        }
+
+        if (message.trim() !== '' || file) {
+            fetch('/Project/SendMessageWithFile?cartId=' + cartId, {
+                method: 'POST',
+                body: formData
+            })
+                .then(response => response.ok ? response.json() : Promise.reject('Failed to send message: ' + response.statusText))
+                .then(data => {
+                    console.log('Success:', data);
+                    messageInput.value = '';
+                    fileInput.value = '';
+                    loadMessages(cartId);
+                })
+                .catch(error => console.error('Ошибка:', error));
+        } else {
+            console.error('Ошибка.');
+        }
+    }
+
+    function loadMessages(cartId) {
+        fetch('/Project/GetMessagesForCart?cartId=' + cartId)
+            .then(response => response.ok ? response.json() : Promise.reject('Failed to load messages: ' + response.statusText))
+            .then(data => {
+                if (data.success && Array.isArray(data.messages)) {
+                    updateChatMessages(data.messages, cartId);
+                    markAllMessagesAsRead(cartId);
+                } else {
+                    console.error('Ошибка:', data);
+                }
+            })
+            .catch(error => console.error('Ошибка:', error));
+    }
+
+    function updateChatMessages(messages, cartId) {
+        var chatMessages = document.getElementById('modalChat');
+        chatMessages.innerHTML = ''; // Очистка предыдущих сообщений
+
+        messages.forEach(message => {
+            var messageDiv = document.createElement('div');
+            messageDiv.className = 'message';
+            messageDiv.dataset.messageId = message.id;
+            messageDiv.textContent = message.userName + ': ' + message.text + ' (' + message.timeSent + ')';
+
+            if (message.fileUrl) {
+                var fileLink = document.createElement('a');
+                fileLink.href = message.fileUrl;
+                fileLink.target = '_blank';
+                fileLink.textContent = "Download File";
+                messageDiv.appendChild(fileLink);
+            }
+
+            chatMessages.appendChild(messageDiv);
+        });
+    }
+
+    function markAllMessagesAsRead(cartId) {
+        const messages = document.querySelectorAll(`#modalChat .message:not(.read)`);
+        messages.forEach(msg => {
+            const messageId = msg.dataset.messageId; // Получение ID сообщения
+            markMessageAsRead(messageId, cartId);
+            msg.classList.add('read');
+        });
+    }
+
+    function markMessageAsRead(messageId, cartId) {
+        fetch(`/Project/MarkAsRead?messageId=${messageId}`, {
+            method: 'POST'
+        })
+            .then(response => {
+                if (!response.ok) {
+                    return response.text().then(text => Promise.reject(text));
+                }
+                return response.json();
+            })
+            .then(data => {
+                console.log('Message marked as read:', data);
+            })
+            .catch(error => {
+                console.error('Error marking message as read:', error);
+            });
+    }
+
+    document.addEventListener("DOMContentLoaded", function () {
+        closeModals();
+        const urlParts = window.location.pathname.split('/');
+        const projectId = urlParts[urlParts.length - 1];
+
+        function changeCardColorsForProject(projectId) {
+            fetch(`/Project/GetCardsForProject?projectId=${projectId}`)
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('Ошибка при запросе карточек для проекта: ' + response.statusText);
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    if (data && data.success && Array.isArray(data.carts)) {
+                        data.carts.forEach(card => {
+                            const cardElement = document.querySelector(`.kanban-column-list li[onclick*="${card.id}"]`);
+                            if (cardElement) {
+                                cardElement.style.backgroundColor = card.color;
+                            }
+                        });
+                    } else {
+                        console.error('Не удалось получить карточки для проекта:', data && data.message ? data.message : 'Неверный формат данных');
+                    }
+                })
+                .catch(error => console.error('Ошибка при запросе карточек для проекта:', error));
+        }
+
+        // Функция для проверки непрочитанных сообщений
+        function checkUnreadMessages() {
+            fetch('/Project/CheckUnreadMessages')
+                .then(response => response.json())
+                .then(data => {
+                    // Предполагаем, что сервер возвращает объект вида { cartId: unreadCount }
+                    for (const cartId in data) {
+                        const unreadCount = data[cartId];
+                        const unreadIndicator = document.getElementById('unreadIndicator_' + cartId);
+                        if (unreadIndicator) {
+                            // Обновляем индикатор на странице
+                            unreadIndicator.style.display = unreadCount > 0 ? 'block' : 'none';
+                            unreadIndicator.textContent = unreadCount;  // Отображаем количество непрочитанных сообщений
+                        }
+                    }
+                })
+                .catch(error => {
+                    console.error('Ошибка:', error);
+                });
+        }
+
+        document.querySelectorAll('.kanban-column-header-main').forEach(header => {
+            header.onblur = function () {
+                let newName = this.innerText.trim();
+                saveColumnName(newName, this);
+            }
+        });
+
+        function saveColumnName(newName, element) {
+            const columnId = element.getAttribute('data-column-id');
+            if (!columnId || !newName) {
+                console.error('Ошибка: columnId или newName не может быть пустым.');
+                return;
+            }
+            updateColumn(columnId, newName, element);
+        }
+
+        function updateColumn(columnId, newName, element) {
+            fetch('/Project/updateColumnName', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ columnId: columnId, newName: newName })
+            })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        console.log('Имя колонки обновлено');
+                    } else {
+                        console.error('Ошибка при обновлении имени колонки:', data.message);
+                    }
+                })
+                .catch(error => console.error('Ошибка запроса:', error));
+        }
+
+
+        document.getElementById('addColumnButton').addEventListener('click', activateColumns);
+        document.getElementById('disColumnButton').addEventListener('click', disactivateColumns);
+
+        function activateColumns() {
+            fetch('/Project/ActivateColumns', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ projectId: projectId })
+            })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        console.log('Колонки активированы');
+                        location.reload(); // Перезагрузить страницу для отображения изменений
+                    } else {
+                        if (data.message === 'TooManyColumns') {
+                            alert('Вы не можете активировать больше 5 столбцов.');
+                        } else {
+                            console.error('Ошибка при активации колонок:', data.message);
+                        }
+                    }
+                })
+                .catch(error => console.error('Ошибка запроса:', error));
+        }
+
+        function disactivateColumns() {
+            fetch('/Project/DeactivateColumns', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ projectId: projectId })
+            })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        console.log('Колонки выключены');
+                        location.reload(); // Перезагрузить страницу для отображения изменений
+                    } else {
+                        if (data.message === 'TooFewColumns') {
+                            alert('В таблице должно быть как минимум 3 столбика.');
+                        } else {
+                            console.error('Ошибка при деактивации колонок:', data.message);
+                        }
+                    }
+                })
+                .catch(error => console.error('Ошибка запроса:', error));
+        }
+
+        checkUnreadMessages();
+        changeCardColorsForProject(projectId);
+        setInterval(checkUnreadMessages, 5000);
+
+    });
+
+    function approveMove(cartId) {
+        fetch(`/Project/ApproveMoveCard`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ cartId: cartId })
+        })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    location.reload(); // Перезагрузить страницу, чтобы отобразить изменения
+                } else {
+                    alert('Ошибка: ' + data.message);
+                }
+            })
+            .catch(error => {
+                console.error('Ошибка при одобрении перемещения:', error);
+                location.reload();
+            });
+    }
+
+    function rejectMove(cartId) {
+        fetch(`/Project/RejectMoveCard`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ cartId: cartId})
+        })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    location.reload(); // Перезагрузить страницу, чтобы отобразить изменения
+                } else {
+                    alert('Ошибка: ' + data.message);
+                }
+            })
+            .catch(error => {
+                console.error('Ошибка при отклонении перемещения:', error);
+                location.reload();
+            });
+    }
+
+    function requestMoveCard(cartId, projectId, newColumnId) {
+        fetch(`/Project/RequestMoveCard`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ cartId: cartId, newColumnId: newColumnId })
+        })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    location.reload();
+                } else {
+                    console.error('Ошибка при запросе перемещения:', data.message);
+                }
+            })
+            .catch(error => {
+                console.error('Ошибка при отклонении перемещения:', error);
+                location.reload();
+            });
+    }
+</script>

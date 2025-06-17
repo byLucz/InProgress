@@ -1,0 +1,199 @@
+﻿@model XKANBAN.Models.Project.Project
+@{
+    ViewData["Title"] = "Панель управления";
+}
+
+<h2>Панель управления</h2>
+
+<div class="container">
+    <div class="form-group">
+        <label>Роль:</label>
+        <select class="form-control" id="roleSelect" onchange="toggleGroupSearch(); loadUsers();">
+            <option value="">Выберите роль</option>
+            <option value="Student">Студент</option>
+            <option value="Supervisor">Супервайзер</option>
+            <option value="Teacher">Науч.рук</option>
+            <option value="Consultant">Консультант</option>
+        </select>
+    </div>
+
+    <div class="form-group" id="groupSelectDiv" style="display:none;">
+        <label>Группа:</label>
+        <select class="form-control" id="groupSelect" onchange="loadUsers();">
+        </select>
+    </div>
+
+    <div class="form-group">
+        <label>Пользователь:</label>
+        <select class="form-control" id="userSelect">
+        </select>
+    </div>
+
+    <button class="btn btn-small" id="addUserToProject" onclick="showProjectModal()">Добавить пользователя к проекту</button>
+    <hr />
+    <a class="btn btn-success text-white" asp-area="" asp-controller="User" asp-action="Register" role="button">Зарегистрировать нового пользователя</a>
+</div>
+
+<div id="projectModal" style="display:none; position: fixed; left: 50%; top: 50%; transform: translate(-50%, -50%); background-color: white; border: 1px solid #ccc; padding: 20px; z-index: 1000;">
+    <h4>Выберите проект для добавления пользователя</h4>
+    <div class="form-group">
+        <label>Роль:</label>
+        <select class="form-control" id="modalRoleSelect" onchange="toggleModalGroupSearch(); loadModalUsers();">
+            <option value="">Выберите роль</option>
+            <option value="Student">Студент</option>
+            <option value="Supervisor">Супервайзер</option>
+            <option value="Teacher">Науч.рук</option>
+            <option value="Consultant">Консультант</option>
+        </select>
+    </div>
+    <div class="form-group" id="modalGroupSelectDiv" style="display:none;">
+        <label>Группа:</label>
+        <select class="form-control" id="modalGroupSelect" onchange="loadModalUsers();">
+        </select>
+    </div>
+    <div class="form-group">
+        <label>Пользователь:</label>
+        <select class="form-control" id="modalUserSelect" onchange="loadUserProjects();">
+        </select>
+    </div>
+    <div class="form-group">
+        <label>Проект:</label>
+        <select class="form-control" id="projectSelect">
+        </select>
+    </div>
+    <div style="margin-top: 10px;"></div>
+    <button class="btn btn-small" onclick="confirmAddUserToProject()">Добавить</button>
+    <button class="btn btn-small" onclick="closeModal()">Отмена</button>
+</div>
+
+<div id="overlay" onclick="closeModal()" style="display:none; position: fixed; width: 100%; height: 100%; top: 0; left: 0; right: 0; bottom: 0; background-color: rgba(0,0,0,0.5); z-index: 999;"></div>
+
+
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        loadGroups();
+    });
+
+    function toggleGroupSearch() {
+        var role = document.getElementById('roleSelect').value;
+        var groupSelect = document.getElementById('groupSelectDiv');
+        groupSelect.style.display = (role === 'Student') ? 'block' : 'none';
+        if (role !== 'Student') {
+            loadUsers();
+        }
+    }
+
+    function loadGroups() {
+        fetch('/Project/GetGroups')
+            .then(response => response.json())
+            .then(data => {
+                var groupSelect = document.getElementById('groupSelect');
+                var modalGroupSelect = document.getElementById('modalGroupSelect');
+                groupSelect.innerHTML = '<option value="">Выберите группу</option>'; // Сброс и начальная опция
+                modalGroupSelect.innerHTML = '<option value="">Выберите группу</option>';
+                data.forEach(group => {
+                    var option = document.createElement('option');
+                    option.value = group;
+                    option.textContent = group;
+                    groupSelect.appendChild(option);
+                    modalGroupSelect.appendChild(option.cloneNode(true)); // Добавляем опции в оба списка
+                });
+            })
+            .catch(error => console.error('Ошибка при загрузке групп:', error));
+    }
+
+    function loadUsers() {
+        var role = document.getElementById('roleSelect').value;
+        var group = role === 'Student' ? document.getElementById('groupSelect').value : '';
+        fetch(`/Project/GetUsersByRoleAndGroup?role=${role}&group=${group}`)
+            .then(response => response.json())
+            .then(data => {
+                var userSelect = document.getElementById('userSelect');
+                userSelect.innerHTML = ''; 
+                data.forEach(user => {
+                    var optionElement = document.createElement('option');
+                    optionElement.textContent = user.displayName; 
+                    optionElement.value = user.userId;
+                    userSelect.appendChild(optionElement);
+                });
+            })
+            .catch(error => console.error('Ошибка при загрузке пользователей:', error));
+    }
+
+    function showProjectModal() {
+        document.getElementById('overlay').style.display = 'block';
+        document.getElementById('projectModal').style.display = 'block'; 
+    }
+
+    function toggleModalGroupSearch() {
+        var role = document.getElementById('modalRoleSelect').value;
+        var groupSelect = document.getElementById('modalGroupSelectDiv');
+        groupSelect.style.display = (role === 'Student') ? 'block' : 'none';
+        if (role !== 'Student') {
+            loadUsers();
+        }
+    }
+
+    function loadModalUsers() {
+        var role = document.getElementById('modalRoleSelect').value;
+        var group = role === 'Student' ? document.getElementById('modalGroupSelect').value : '';
+        fetch(`/Project/GetUsersByRoleAndGroup?role=${role}&group=${group}`)
+            .then(response => response.json())
+            .then(data => {
+                var userSelect = document.getElementById('modalUserSelect');
+                userSelect.innerHTML = ''; 
+                data.forEach(user => {
+                    var optionElement = document.createElement('option');
+                    optionElement.textContent = user.displayName; 
+                    optionElement.value = user.userId;
+                    userSelect.appendChild(optionElement);
+                });
+            })
+            .catch(error => console.error('Ошибка при загрузке пользователей:', error));
+    }
+
+    function loadUserProjects() {
+        var userId = document.getElementById('modalUserSelect').value;
+        fetch(`/Project/GetProjectsByUserId?userId=${userId}`)
+            .then(response => response.json())
+            .then(data => {
+                var projectSelect = document.getElementById('projectSelect');
+                projectSelect.innerHTML = ''; // Очистка списка
+                data.forEach(project => {
+                    var optionElement = document.createElement('option');
+                    optionElement.textContent = project.title;
+                    optionElement.value = project.projectId;
+                    projectSelect.appendChild(optionElement);
+                });
+            })
+            .catch(error => console.error('Ошибка при загрузке проектов:', error));
+    }
+
+    function confirmAddUserToProject() {
+        var userId = parseInt(document.getElementById('userSelect').value, 10);
+        var projectId = parseInt(document.getElementById('projectSelect').value, 10);
+        console.log(userId); 
+        console.log(projectId);
+
+        fetch('/Project/AddUserToProject', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ userId: userId, projectId: projectId })
+        })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    alert('Пользователь успешно добавлен к проекту');
+                    closeModal();
+                } else {
+                    alert('Ошибка при добавлении пользователя: ' + data.message);
+                }
+            })
+            .catch(error => console.error('Ошибка при добавлении пользователя:', error));
+    }
+
+    function closeModal() {
+        document.getElementById('projectModal').style.display = 'none'; 
+        document.getElementById('overlay').style.display = 'none'; 
+    }
+</script>

@@ -1,0 +1,36 @@
+@model XKANBAN.Models.Project.Cart
+
+<li class="card" onclick="toggleFields(@Model.CartId)">
+    <div>@Model.Name</div>
+
+    <!-- Поле для сообщений чата (изначально скрыто) -->
+    <div id="messages_@Model.CartId" style="display: none;">
+        @foreach (var message in Model.ChatMessages)
+        {
+            <div>@message.Text - <small>@message.UserName (@message.TimeSent)</small></div>
+        }
+    </div>
+
+    <!-- Форма загрузки файла (изначально скрыта) -->
+    <form id="fileUploadForm_@Model.CartId" method="post" enctype="multipart/form-data" action="/Project/UploadFile/@Model.CartId" style="display: none;">
+        <input type="file" name="attachedFile" />
+        <button type="submit">Загрузить файл</button>
+    </form>
+
+    <a href="/Project/GoToNextLevel/@Model.CartId">Вперед</a>
+    <a href="/Project/DeleteCart/@Model.CartId">Удалить</a>
+</li>
+
+<script>
+    function toggleFields(cartId) {
+        var messages = document.getElementById('messages_' + cartId);
+        var fileUploadForm = document.getElementById('fileUploadForm_' + cartId);
+        if (messages.style.display === 'none') {
+            messages.style.display = 'block';
+            fileUploadForm.style.display = 'block';
+        } else {
+            messages.style.display = 'none';
+            fileUploadForm.style.display = 'none';
+        }
+    }
+</script>

@@ -1,0 +1,76 @@
+﻿@{
+    ViewData["Title"] = "Главная страница";
+}
+
+<div class="jumbotron jumbotron-fluid text-center">
+    <div class="container">
+        <h1 class="display-4">Добро пожаловать в InProgress</h1>
+        <p class="lead">Cистема поддержки руководства ВКР</p>
+        @if (User.Identity.IsAuthenticated)
+        {
+            <a class="btn btn-success text-white" asp-area="" asp-controller="Project" asp-action="Desks">Доски</a>
+        }
+        else
+        {
+            <a class="btn btn-success text-white" asp-area="" asp-controller="User" asp-action="Login" role="button">Войти</a>
+        }
+    </div>
+</div>
+
+<div class="container mt-5">
+    <div class="row">
+        <div class="col-md-4">
+            <div class="card mb-4 shadow-sm">
+                <div class="card-body">
+                    <h5 class="card-title">Управление проектами</h5>
+                    <p class="card-text">Создавайте и управляйте проектами с помощью Kanban-доски.ㅤㅤㅤㅤㅤㅤㅤㅤㅤㅤㅤ</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card mb-4 shadow-sm">
+                <div class="card-body">
+                    <h5 class="card-title">Визуализация</h5>
+                    <p class="card-text">Наглядное представление текущих задач повышающая эффектиновсть работы с нимиㅤㅤㅤㅤㅤㅤㅤㅤㅤ</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card mb-4 shadow-sm">
+                <div class="card-body">
+                    <h5 class="card-title">Инфографика</h5>
+                    <p class="card-text">Просматривайте визуальные отчеты о состоянии ваших проектов для лучшего понимания прогресса.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="container mt-5">
+    <div class="row">
+        <div class="col-md-4">
+            <div class="card mb-4 shadow-sm">
+                <div class="card-body">
+                    <h5 class="card-title">Безопасность данных</h5>
+                    <p class="card-text">Ваши пароли защищены с помощью хэш-шифрования SHA-256.ㅤㅤㅤㅤㅤㅤㅤㅤㅤㅤㅤㅤㅤㅤㅤㅤㅤㅤㅤㅤㅤㅤㅤㅤㅤㅤㅤㅤㅤㅤㅤ</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card mb-4 shadow-sm">
+                <div class="card-body">
+                    <h5 class="card-title">Совместная работа</h5>
+                    <p class="card-text">Помогает оперативно реагировать на проблемы и своевременно обсуждать вопросы по задачам в реальном времени.</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card mb-4 shadow-sm">
+                <div class="card-body">
+                    <h5 class="card-title">Шаблоны</h5>
+                    <p class="card-text">Создавайте универсальные шаблоны которые могут быть сразу использованны научными руководителями в их работе.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

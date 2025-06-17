@@ -1,0 +1,221 @@
+﻿<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>@ViewData["Title"] - InProgress</title>
+    <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
+    <link rel="stylesheet" href="~/css/site.css" />
+    <link rel="stylesheet" href="~/css/Custom.css" />
+</head>
+<body>
+    <header>
+        <nav class="navbar navbar-expand-sm navbar-toggleable-sm navbar-light bg-white border-bottom box-shadow mb-3">
+            <div class="container">
+                <a class="navbar-brand" asp-area="" asp-controller="Home" asp-action="Index">InProgress</a>
+                <button class="navbar-toggler" type="button" data-toggle="collapse" data-target=".navbar-collapse" aria-controls="navbarSupportedContent"
+                        aria-expanded="false" aria-label="Toggle navigation">
+                    <span class="navbar-toggler-icon"></span>
+                </button>
+                <div class="navbar-collapse collapse d-sm-inline-flex justify-content-between">
+                    <ul class="navbar-nav flex-grow-1">
+                        @if (User.Identity.IsAuthenticated)
+                        {
+                            <li class="nav-item">
+                                <a class="nav-link text-dark" asp-area="" asp-controller="Project" asp-action="Announcement">Объявления</a>
+                            </li>
+                            <li class="nav-item">
+                                <a class="nav-link text-dark" asp-area="" asp-controller="Project" asp-action="Desks">Доски</a>
+                            </li>
+                            <li class="nav-item">
+                                <a class="nav-link text-dark" asp-area="" asp-controller="Project" asp-action="Info">Инфографика</a>
+                            </li>
+                            <div id="supervisorPanel" style="display: none;">
+                            <li class="nav-item">
+                                <a class="nav-link text-dark" asp-area="" asp-controller="Project" asp-action="SuperPanel">Панель управления</a>
+                            </li>
+                    </div>
+                    <div id="templatePanel" style="display: none;">
+                        <li class="nav-item">
+                            <a class="nav-link text-dark" asp-area="" asp-controller="Project" asp-action="TemplateEditor">Редактор шаблонов</a>
+                        </li>
+                    </div>
+                    <li class="nav-item">
+                        <a id="userRoleLink" class="nav-link text-dark" asp-area="" asp-controller="User" asp-action="UserProfile">@User.Identity.Name</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link text-dark" asp-area="" asp-controller="User" asp-action="Logout">Выход</a>
+                    </li>
+                        }
+                        else
+                        {
+                    <li class="nav-item">
+                        <a class="nav-link text-dark" asp-area="" asp-controller="Project" asp-action="Announcement">Объявления</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link text-dark" asp-area="" asp-controller="User" asp-action="Login">Доски</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link text-dark" asp-area="" asp-controller="User" asp-action="Login">Войти</a>
+                    </li>
+                        }
+                </ul>
+            </div>
+            </div>
+        </nav>
+    </header>
+    <div class="container">
+        <main role="main" class="pb-3">
+            @RenderBody()
+        </main>
+    </div>
+
+    <footer class="border-top footer text-muted">
+        <div class="container">
+            &copy; Assembed & Designed by lucz for SibSUTIS in 2024
+        </div>
+    </footer>
+    <script src="~/lib/jquery/dist/jquery.min.js"></script>
+    <script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="~/js/site.js" asp-append-version="true"></script>
+    @await RenderSectionAsync("Scripts", required: false)
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            checkSupervisorRole();
+            checkTeacherRole();
+            checkStudentRole();
+            checkConsultantRole();
+        });
+
+        function checkSupervisorRole() {
+            fetch('@Url.Action("IsSupervisor", "User")')
+                .then(response => response.json())
+                .then(data => {
+                    if (data.isSupervisor) {
+                        const supervisorActions = document.getElementById('supervisorActions');
+                        const supervisorPanel = document.getElementById('supervisorPanel');
+                        const searchPanel = document.getElementById('searchPanel');
+                        const templatePanel = document.getElementById('templatePanel');
+                        const teacherProjActions = document.querySelectorAll('#teacherProjActions');
+
+                        if (supervisorActions) {
+                            supervisorActions.style.display = 'block';
+                        }
+
+                        if (supervisorPanel) {
+                            supervisorPanel.style.display = 'block';
+                        }
+
+                        if (searchPanel) {
+                            searchPanel.style.display = 'block';
+                        }
+                        if (templatePanel) {
+                            templatePanel.style.display = 'block';
+                        }
+
+                        teacherProjActions.forEach(panel => {
+                            panel.style.display = 'block';
+                        });
+
+                        document.querySelectorAll('.delete-announcement').forEach(button => {
+                            button.style.display = 'inline';
+                        });
+                        updateUserRole('Supervisor');
+                    }
+                })
+                .catch(error => console.error('Ошибка при проверке роли пользователя:', error));
+        }
+
+        function checkTeacherRole() {
+            fetch('@Url.Action("IsTeacher", "User")')
+                .then(response => response.json())
+                .then(data => {
+                    if (data.isTeacher) {
+                        const teacherActions = document.getElementById('teacherActions');
+                        const teacherProjActions = document.querySelectorAll('#teacherProjActions');
+                        const teacherKBpanel = document.querySelectorAll('#teacherKBpanel');
+                        const searchPanel = document.getElementById('searchPanel');
+                        const kanbanHeaders = document.querySelectorAll('.kanban-column-header-main');
+                        const templatePanel = document.getElementById('templatePanel');
+
+                        if (teacherActions) {
+                            teacherActions.style.display = 'block';
+                        }
+
+                        if (searchPanel) {
+                            searchPanel.style.display = 'block';
+                        }
+
+                        if (templatePanel) {
+                            templatePanel.style.display = 'block';
+                        }
+
+                        teacherKBpanel.forEach(panel => {
+                            panel.style.display = 'block';
+                        });
+
+                        teacherProjActions.forEach(panel => {
+                            panel.style.display = 'block';
+                        });
+
+                        kanbanHeaders.forEach(header => {
+                            header.setAttribute('contenteditable', 'true');
+                        });
+
+                        updateUserRole('Teacher');
+                    }
+                })
+                .catch(error => console.error('Ошибка при проверке роли пользователя:', error));
+        }
+
+        function checkStudentRole() {
+            fetch('@Url.Action("IsStudent", "User")')
+                .then(response => response.json())
+                .then(data => {
+                    if (data.isStudent) {
+                        const studentKBpanels = document.querySelectorAll('#studentKBpanel');
+
+                        studentKBpanels.forEach(panel => {
+                            panel.style.display = 'block';
+                        });
+                        disableEditFields();
+                        updateUserRole('Student');
+                    }
+                })
+                .catch(error => console.error('Ошибка при проверке роли пользователя:', error));
+        }
+
+        function checkConsultantRole() {
+            fetch('@Url.Action("IsConsultant", "User")')
+                .then(response => response.json())
+                .then(data => {
+                    if (data.isConsultant) {
+                        const searchPanel = document.getElementById('searchPanel');
+
+                        if (searchPanel) {
+                            searchPanel.style.display = 'block';
+                        }
+                        disableEditFields();
+                        updateUserRole('Consultant');
+                    }
+                })
+                .catch(error => console.error('Ошибка при проверке роли пользователя:', error));
+        }
+
+        function updateUserRole(role) {
+            const userRoleLink = document.getElementById('userRoleLink');
+            if (userRoleLink) {
+                userRoleLink.innerHTML = `${userRoleLink.innerHTML.split('(')[0].trim()} (${role})`;
+            }
+        }
+
+        function disableEditFields() {
+            document.getElementById('modalTaskNameInput').disabled = true;
+            document.getElementById('modalDescriptionInput').disabled = true;
+            document.getElementById('colorSelector').disabled = true;
+            document.getElementById('deadlineDateInput').disabled = true;
+            document.getElementById('saveModalButton').style.display = 'none';
+        }
+    </script>
+</body>
+</html>
